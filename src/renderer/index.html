@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Data Extractor</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <div class="app">
+        <div class="toolbar">
+            <div class="toolbar-left">
+                <div class="app-title">YouTube Data Extractor</div>
+                <div class="status-bar" id="status-bar">就绪</div>
+            </div>
+            <div class="toolbar-right">
+                <button id="export-btn" class="btn btn-export" disabled>
+                    <span class="icon">💾</span>
+                    导出CSV
+                </button>
+            </div>
+        </div>
+
+        <div class="workspace">
+            <div class="input-panel">
+                <div class="panel-header">
+                    <span class="panel-title">输入链接</span>
+                    <div class="controls">
+                        <button id="clear-btn" class="btn btn-small">清空</button>
+                        <button id="stop-btn" class="btn btn-danger" style="display: none;">
+                            <span class="icon">⏹</span>
+                            停止
+                        </button>
+                        <div class="btn-group">
+                            <button id="analyze-btn" class="btn btn-primary">
+                                <span class="icon">⚡</span>
+                                解析
+                            </button>
+                            <button id="analyze-dropdown" class="btn btn-primary btn-dropdown">
+                                <span class="icon">▼</span>
+                            </button>
+                            <div id="analyze-menu" class="dropdown-menu">
+                                <div class="dropdown-item" data-action="parse">
+                                    <span class="icon">⚡</span>
+                                    解析（清空重新开始）
+                                </div>
+                                <div class="dropdown-item" data-action="append">
+                                    <span class="icon">➕</span>
+                                    追加解析（保留现有结果）
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <textarea
+                    id="urls-input"
+                    placeholder="粘贴YouTube链接，支持批量（一行一个）
+
+示例：
+https://www.youtube.com/watch?v=example1
+https://www.youtube.com/watch?v=example2"
+                    spellcheck="false"></textarea>
+            </div>
+
+            <div class="progress-panel" id="progress-panel" style="display: none;">
+                <div class="progress-info">
+                    <span id="progress-text">正在解析...</span>
+                    <span id="progress-count">0/0</span>
+                </div>
+                <div class="progress-track">
+                    <div class="progress-fill" id="progress-fill"></div>
+                </div>
+            </div>
+
+            <div class="results-panel">
+                <div class="panel-header">
+                    <span class="panel-title">解析结果</span>
+                    <div class="result-stats" id="result-stats">0 项</div>
+                </div>
+                <div class="table-wrapper">
+                    <div id="results-table" class="excel-table"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>

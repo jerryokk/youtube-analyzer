@@ -1,0 +1,468 @@
+/* 重置和基础样式 */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    font-size: 13px;
+    line-height: 1.4;
+    color: #333;
+    background: #f5f5f5;
+    overflow: hidden;
+}
+
+/* 主应用容器 */
+.app {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+}
+
+/* 工具栏 */
+.toolbar {
+    height: 40px;
+    background: #2d2d2d;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 12px;
+    border-bottom: 1px solid #1a1a1a;
+    flex-shrink: 0;
+}
+
+.toolbar-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.app-title {
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.status-bar {
+    font-size: 12px;
+    color: #aaa;
+    padding: 2px 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+}
+
+.toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* 工作区域 */
+.workspace {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+/* 面板通用样式 */
+.panel-header {
+    height: 32px;
+    background: #f8f8f8;
+    border-bottom: 1px solid #e0e0e0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 12px;
+    flex-shrink: 0;
+}
+
+.panel-title {
+    font-weight: 500;
+    color: #555;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* 输入面板 */
+.input-panel {
+    background: #fff;
+    border-bottom: 1px solid #e0e0e0;
+    flex-shrink: 0;
+}
+
+.controls {
+    display: flex;
+    gap: 6px;
+}
+
+#urls-input {
+    width: 100%;
+    height: 120px;
+    border: none;
+    padding: 12px;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 12px;
+    line-height: 1.5;
+    resize: none;
+    outline: none;
+    background: #fafafa;
+}
+
+#urls-input:focus {
+    background: #fff;
+}
+
+#urls-input::placeholder {
+    color: #999;
+    line-height: 1.4;
+}
+
+/* 进度面板 */
+.progress-panel {
+    background: #f0f8ff;
+    border-bottom: 1px solid #d0e8ff;
+    padding: 8px 12px;
+    flex-shrink: 0;
+}
+
+.progress-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+    font-size: 12px;
+    color: #0066cc;
+}
+
+.progress-track {
+    height: 3px;
+    background: #e0e8f0;
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #007acc, #0066cc);
+    width: 0%;
+    transition: width 0.3s ease;
+    border-radius: 2px;
+}
+
+/* 结果面板 */
+.results-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    background: #fff;
+}
+
+.result-stats {
+    font-size: 11px;
+    color: #666;
+    background: #f0f0f0;
+    padding: 2px 8px;
+    border-radius: 10px;
+}
+
+/* 表格容器 */
+.table-wrapper {
+    flex: 1;
+    overflow: auto;
+    min-height: 0;
+    background: #fff;
+    max-height: calc(100vh - 200px);
+}
+
+/* 自定义Excel表格样式 */
+.excel-wrapper {
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    border: 1px solid #e0e0e0;
+}
+
+.excel-grid {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    background: #fff;
+    table-layout: fixed;
+}
+
+.excel-cell {
+    border: 1px solid #e0e0e0;
+    padding: 6px 8px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    user-select: none;
+    cursor: cell;
+}
+
+.excel-header-cell {
+    background: #f8f8f8;
+    font-weight: 500;
+    color: #555;
+    text-align: center;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.excel-data-cell {
+    background: #fff;
+    cursor: cell;
+}
+
+.excel-data-cell:hover {
+    background: #f9f9f9;
+}
+
+.excel-data-cell.selected {
+    background: #e3f2fd !important;
+    border: 2px solid #1976d2 !important;
+    color: #1976d2;
+}
+
+/* 单元格样式 */
+.cell-url {
+    font-family: 'Consolas', monospace;
+    font-size: 11px;
+    color: #0066cc;
+    word-break: break-all;
+}
+
+.cell-link {
+    color: #0066cc;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.cell-link:hover {
+    color: #004499;
+    text-decoration: underline;
+}
+
+.text-right {
+    text-align: right;
+    font-family: 'Consolas', monospace;
+    font-weight: 500;
+}
+
+.cell-error {
+    background: #fff2f2 !important;
+}
+
+/* 列宽设置 */
+.excel-grid th:nth-child(1),
+.excel-grid td:nth-child(1) { width: 20%; min-width: 180px; } /* 链接 */
+.excel-grid th:nth-child(2),
+.excel-grid td:nth-child(2) { width: 30%; min-width: 250px; } /* 标题 */
+.excel-grid th:nth-child(3),
+.excel-grid td:nth-child(3) { width: 12%; min-width: 100px; } /* 频道 */
+.excel-grid th:nth-child(4),
+.excel-grid td:nth-child(4) { width: 8%; min-width: 80px; }   /* 订阅量 */
+.excel-grid th:nth-child(5),
+.excel-grid td:nth-child(5) { width: 8%; min-width: 80px; }   /* 播放量 */
+.excel-grid th:nth-child(6),
+.excel-grid td:nth-child(6) { width: 6%; min-width: 60px; }   /* 点赞 */
+.excel-grid th:nth-child(7),
+.excel-grid td:nth-child(7) { width: 6%; min-width: 60px; }   /* 评论 */
+.excel-grid th:nth-child(8),
+.excel-grid td:nth-child(8) { width: 10%; min-width: 90px; }  /* 发布日期 */
+.excel-grid th:nth-child(9),
+.excel-grid td:nth-child(9) { width: 6%; min-width: 50px; text-align: center; } /* 状态 */
+
+/* 复制通知 */
+.copy-notification {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: #28a745;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 4px;
+    font-size: 12px;
+    z-index: 10000;
+    animation: fadeInOut 2s ease-in-out;
+}
+
+@keyframes fadeInOut {
+    0% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+    20% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    80% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    100% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+}
+
+
+/* 按钮样式 */
+.btn {
+    border: none;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.2s ease;
+    padding: 6px 12px;
+    outline: none;
+}
+
+.btn:focus {
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.btn-primary {
+    background: #007acc;
+    color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+    background: #0066cc;
+}
+
+.btn-primary:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+}
+
+.btn-small {
+    background: #f8f8f8;
+    color: #666;
+    border: 1px solid #ddd;
+    padding: 4px 8px;
+    font-size: 11px;
+}
+
+.btn-small:hover {
+    background: #eee;
+    color: #333;
+}
+
+.btn-export {
+    background: #28a745;
+    color: white;
+    font-size: 11px;
+    padding: 4px 8px;
+}
+
+.btn-export:hover:not(:disabled) {
+    background: #218838;
+}
+
+.btn-export:disabled {
+    background: #6c757d;
+    cursor: not-allowed;
+}
+
+.btn-danger {
+    background: #dc3545;
+    color: white;
+    font-size: 11px;
+    padding: 4px 8px;
+}
+
+.btn-danger:hover:not(:disabled) {
+    background: #c82333;
+}
+
+/* 按钮组 */
+.btn-group {
+    display: inline-flex;
+    position: relative;
+}
+
+.btn-group .btn:first-child {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.btn-dropdown {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+    border-left: 1px solid rgba(255, 255, 255, 0.3);
+    padding: 6px 8px;
+    min-width: auto;
+}
+
+.btn-dropdown .icon {
+    font-size: 8px;
+}
+
+/* 下拉菜单 */
+.dropdown-menu {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    min-width: 200px;
+    z-index: 1000;
+    display: none;
+}
+
+.dropdown-menu.show {
+    display: block;
+}
+
+.dropdown-item {
+    padding: 8px 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    transition: background-color 0.2s;
+}
+
+.dropdown-item:hover {
+    background-color: #f8f9fa;
+}
+
+.dropdown-item:first-child {
+    border-top-left-radius: 3px;
+    border-top-right-radius: 3px;
+}
+
+.dropdown-item:last-child {
+    border-bottom-left-radius: 3px;
+    border-bottom-right-radius: 3px;
+}
+
+.icon {
+    font-size: 11px;
+}
+
+/* 滚动条样式 */
+.table-wrapper::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.table-wrapper::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+.table-wrapper::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+}
+
+.table-wrapper::-webkit-scrollbar-thumb:hover {
+    background: #a1a1a1;
+}
