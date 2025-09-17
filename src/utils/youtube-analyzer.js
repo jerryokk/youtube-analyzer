@@ -1,4 +1,4 @@
-const puppeteer = require('puppeteer');
+const puppeteer = require('puppeteer-core');
 
 class YouTubeAnalyzer {
   constructor() {
@@ -8,7 +8,32 @@ class YouTubeAnalyzer {
 
   async initBrowser() {
     if (!this.browser) {
-      this.browser = await puppeteer.launch({
+      // 使用系统 Edge 浏览器的常见路径
+      const possiblePaths = [
+        'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
+        'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
+        process.env.LOCALAPPDATA + '\\Microsoft\\Edge\\Application\\msedge.exe'
+      ];
+
+      let executablePath = null;
+      for (const path of possiblePaths) {
+        try {
+          const fs = require('fs');
+          if (fs.existsSync(path)) {
+            executablePath = path;
+            break;
+          }
+        } catch (e) {
+          continue;
+        }
+      }
+
+      if (!executablePath) {
+        throw new Error('未找到 Microsoft Edge 浏览器。请确保已安装 Edge 浏览器。');
+      }
+
+      const launchOptions = {
+        executablePath,
         headless: true,
         args: [
           '--no-sandbox',
@@ -18,9 +43,13 @@ class YouTubeAnalyzer {
           '--no-first-run',
           '--no-zygote',
           '--disable-gpu',
+          '--disable-web-security',
+          '--disable-features=VizDisplayCompositor',
           '--lang=en-US'
         ]
-      });
+      };
+
+      this.browser = await puppeteer.launch(launchOptions);
     }
     return this.browser;
   }

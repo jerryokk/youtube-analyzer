@@ -94,6 +94,9 @@ temp/
 .electron/
 electron-builder.yml
 
+# Puppeteer cache
+.puppeteer-cache/
+
 # Debug files
 *.tlog
 *.idb

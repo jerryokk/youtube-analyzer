@@ -4,6 +4,17 @@ const { ipcRenderer } = require('electron');
 const NOTIFICATION_DURATION = 1000; // 1秒 - 复制提示时间
 const NOTIFICATION_DISPLAY_DURATION = 1500; // 1.5秒 - 系统通知显示时间
 
+// UI 文本常量
+const UI_TEXT = {
+    ANALYZING: '解析中...',
+    ANALYZE: '解析',
+    READY: '就绪',
+    PARSING: '正在解析',
+    STOPPED: '正在停止解析...',
+    PARSE_COMPLETE: '解析完成',
+    APPEND_COMPLETE: '追加解析完成'
+};
+
 class ExcelTable {
     constructor(container) {
         this.container = container;
@@ -87,7 +98,7 @@ class ExcelTable {
                 // 对于链接列，创建可点击的链接
                 let cellContent;
                 if (colIndex === 0 && cellValue && cellValue.startsWith('http')) {
-                    cellContent = `<a href="${cellValue}" target="_blank" class="cell-link" onclick="event.stopPropagation()">${this.escapeHtml(cellValue)}</a>`;
+                    cellContent = `<a href="#" class="cell-link" onclick="event.stopPropagation(); ipcRenderer.invoke('open-external', '${cellValue}')">${this.escapeHtml(cellValue)}</a>`;
                 } else {
                     cellContent = this.escapeHtml(cellValue);
                 }
@@ -351,7 +362,14 @@ class YouTubeAnalyzerUI {
 
     validateInput() {
         const urls = this.getValidUrls();
-        this.analyzeBtn.disabled = urls.length === 0;
+        // 如果正在解析，保持按钮禁用状态
+        if (this.isAnalyzing) {
+            this.analyzeBtn.disabled = true;
+            this.analyzeDropdown.disabled = true;
+        } else {
+            this.analyzeBtn.disabled = urls.length === 0;
+            this.analyzeDropdown.disabled = urls.length === 0;
+        }
     }
 
     getValidUrls() {
@@ -403,8 +421,8 @@ class YouTubeAnalyzerUI {
             if (result.success) {
                 this.exportBtn.disabled = false;
                 if (!this.shouldStop) {
-                    const mode = appendMode ? '追加' : '';
-                    this.showNotification(`${mode}解析完成`, 'success');
+                    const message = appendMode ? UI_TEXT.APPEND_COMPLETE : UI_TEXT.PARSE_COMPLETE;
+                    this.showNotification(message, 'success');
                 }
             } else {
                 throw new Error(result.error || '解析失败');
@@ -426,7 +444,7 @@ class YouTubeAnalyzerUI {
     stopAnalysis() {
         this.shouldStop = true;
         ipcRenderer.invoke('stop-analysis');
-        this.showNotification('正在停止解析...', 'info');
+        this.showNotification(UI_TEXT.STOPPED, 'info');
     }
 
     addResultToTable(result) {
@@ -437,23 +455,33 @@ class YouTubeAnalyzerUI {
         this.excelTable.setData([...this.results]);
 
         // 更新统计信息
+        this.updateStats();
+    }
+
+    updateStats() {
         const totalResults = this.results.length;
         const successCount = this.results.filter(r => !r.error).length;
 
-        // 计算当前批次的进度
-        const currentBatchCompleted = totalResults - this.currentBatchStartIndex;
-
         this.resultStats.textContent = `${totalResults} 项 (${successCount} 成功)`;
-        this.statusBar.textContent = `解析中 - ${currentBatchCompleted}/${this.currentBatchTotal} (${successCount} 成功)`;
+
+        if (this.isAnalyzing) {
+            const currentBatchCompleted = totalResults - this.currentBatchStartIndex;
+            this.statusBar.textContent = `解析中 - ${currentBatchCompleted}/${this.currentBatchTotal} (${successCount} 成功)`;
+        } else {
+            this.statusBar.textContent = totalResults > 0 ?
+                `完成 - ${successCount}/${totalResults} 成功` : UI_TEXT.READY;
+        }
     }
 
     setAnalyzing(analyzing) {
+        this.isAnalyzing = analyzing;
         this.analyzeBtn.disabled = analyzing;
         this.analyzeDropdown.disabled = analyzing;
-        this.analyzeBtn.innerHTML = analyzing ? '<span class="icon">⏳</span>解析中...' : '<span class="icon">⚡</span>解析';
+        this.analyzeBtn.innerHTML = analyzing ? `<span class="icon">⏳</span>${UI_TEXT.ANALYZING}` : `<span class="icon">⚡</span>${UI_TEXT.ANALYZE}`;
         this.stopBtn.style.display = analyzing ? 'inline-flex' : 'none';
-        this.urlsInput.disabled = analyzing;
-        this.statusBar.textContent = analyzing ? '正在解析' : '就绪';
+
+        // 更新状态栏
+        this.updateStats();
 
         // 解析开始时关闭下拉菜单
         if (analyzing) {
@@ -477,16 +505,16 @@ class YouTubeAnalyzerUI {
     }
 
     clearResults() {
-        this.excelTable.setData([]);
         this.results = [];
-        this.resultStats.textContent = '0 项';
+        this.excelTable.setData([]);
+        this.updateStats();
         this.exportBtn.disabled = true;
     }
 
     displayResults(results) {
         if (!results || results.length === 0) {
             this.clearResults();
-            this.resultStats.textContent = '0 项';
+            this.updateStats();
             return;
         }
 
@@ -494,9 +522,7 @@ class YouTubeAnalyzerUI {
         this.excelTable.setData(results);
 
         // 更新统计信息
-        const successCount = results.filter(r => !r.error).length;
-        this.resultStats.textContent = `${results.length} 项 (${successCount} 成功)`;
-        this.statusBar.textContent = `完成 - ${successCount}/${results.length} 成功`;
+        this.updateStats();
     }
 
     async exportResults() {

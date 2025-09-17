@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, Notification } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, Notification, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const YouTubeAnalyzer = require('../utils/youtube-analyzer');
@@ -20,7 +20,8 @@ function createWindow() {
       enableRemoteModule: true
     },
     show: false,
-    title: 'YouTube视频信息提取工具'
+    title: 'YouTube Data Extractor',
+    autoHideMenuBar: true
   });
 
   mainWindow.loadFile('src/renderer/index.html');
@@ -29,8 +30,8 @@ function createWindow() {
     mainWindow.show();
   });
 
-  // 开发环境下打开开发者工具（仅在明确指定时）
-  if (process.argv.includes('--dev') && process.env.NODE_ENV === 'development') {
+  // 开发环境下打开开发者工具
+  if (process.argv.includes('--dev')) {
     mainWindow.webContents.openDevTools();
   }
 }
@@ -90,6 +91,17 @@ ipcMain.handle('stop-analysis', async () => {
     return { success: true };
   } catch (error) {
     console.error('Stop analysis error:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// 打开外部链接处理程序
+ipcMain.handle('open-external', async (event, url) => {
+  try {
+    await shell.openExternal(url);
+    return { success: true };
+  } catch (error) {
+    console.error('Open external error:', error);
     return { success: false, error: error.message };
   }
 });
