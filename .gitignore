@@ -97,6 +97,9 @@ electron-builder.yml
 # Puppeteer cache
 .puppeteer-cache/
 
+# Local npm configuration
+.npmrc
+
 # Debug files
 *.tlog
 *.idb

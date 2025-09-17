@@ -1,7 +1,8 @@
 {
   "name": "youtube-analyzer",
-  "version": "1.0.2",
+  "version": "1.0.4",
   "description": "YouTube video information extractor",
+  "author": "YouTube Data Extractor Team",
   "main": "src/main/main.js",
   "scripts": {
     "start": "electron .",
@@ -35,6 +36,7 @@
           "arch": ["x64"]
         }
       ],
+      "icon": "assets/app.ico",
       "signAndEditExecutable": false,
       "requestedExecutionLevel": "asInvoker"
     },

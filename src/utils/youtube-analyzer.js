@@ -8,19 +8,26 @@ class YouTubeAnalyzer {
 
   async initBrowser() {
     if (!this.browser) {
-      // 使用系统 Edge 浏览器的常见路径
+      const fs = require('fs');
+
+      // 更全面的 Edge 浏览器路径检测
       const possiblePaths = [
-        'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
+        // 标准安装路径
         'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
-        process.env.LOCALAPPDATA + '\\Microsoft\\Edge\\Application\\msedge.exe'
+        'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
+        // 用户级安装路径
+        process.env.LOCALAPPDATA + '\\Microsoft\\Edge\\Application\\msedge.exe',
+        // Windows 11 可能的路径
+        'C:\\Program Files\\Microsoft\\Edge Beta\\Application\\msedge.exe',
+        'C:\\Program Files (x86)\\Microsoft\\Edge Beta\\Application\\msedge.exe'
       ];
 
       let executablePath = null;
       for (const path of possiblePaths) {
         try {
-          const fs = require('fs');
-          if (fs.existsSync(path)) {
+          if (path && fs.existsSync(path)) {
             executablePath = path;
+            console.log('Found Edge at:', path);
             break;
           }
         } catch (e) {
@@ -29,7 +36,44 @@ class YouTubeAnalyzer {
       }
 
       if (!executablePath) {
-        throw new Error('未找到 Microsoft Edge 浏览器。请确保已安装 Edge 浏览器。');
+        // 尝试通过注册表查找 Edge
+        try {
+          const { execSync } = require('child_process');
+          const regQuery = 'reg query "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\msedge.exe" /ve';
+          const result = execSync(regQuery, { encoding: 'utf8' });
+          const match = result.match(/REG_SZ\s+(.+\.exe)/);
+          if (match && fs.existsSync(match[1])) {
+            executablePath = match[1];
+            console.log('Found Edge via registry:', executablePath);
+          }
+        } catch (e) {
+          // 注册表查询失败，忽略
+        }
+      }
+
+      if (!executablePath) {
+        // 如果找不到 Edge，尝试查找 Chrome 作为备用
+        const chromePaths = [
+          'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+          'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+          process.env.LOCALAPPDATA + '\\Google\\Chrome\\Application\\chrome.exe'
+        ];
+
+        for (const path of chromePaths) {
+          try {
+            if (path && fs.existsSync(path)) {
+              executablePath = path;
+              console.log('Using Chrome as fallback:', path);
+              break;
+            }
+          } catch (e) {
+            continue;
+          }
+        }
+      }
+
+      if (!executablePath) {
+        throw new Error('未找到可用的浏览器。请安装 Microsoft Edge 或 Google Chrome 浏览器。');
       }
 
       const launchOptions = {
@@ -39,17 +83,28 @@ class YouTubeAnalyzer {
           '--no-sandbox',
           '--disable-setuid-sandbox',
           '--disable-dev-shm-usage',
-          '--disable-accelerated-2d-canvas',
+          '--disable-extensions',
+          '--disable-background-timer-throttling',
+          '--disable-renderer-backgrounding',
+          '--disable-backgrounding-occluded-windows',
+          '--disable-features=TranslateUI',
+          '--disable-ipc-flooding-protection',
           '--no-first-run',
-          '--no-zygote',
+          '--no-default-browser-check',
           '--disable-gpu',
           '--disable-web-security',
-          '--disable-features=VizDisplayCompositor',
           '--lang=en-US'
-        ]
+        ],
+        timeout: 30000
       };
 
-      this.browser = await puppeteer.launch(launchOptions);
+      try {
+        this.browser = await puppeteer.launch(launchOptions);
+        console.log('Edge browser launched successfully');
+      } catch (error) {
+        console.error('Failed to launch Edge:', error.message);
+        throw new Error(`无法启动 Microsoft Edge 浏览器: ${error.message}\n\n请尝试：\n1. 重新启动应用\n2. 更新 Microsoft Edge 到最新版本\n3. 以管理员身份运行应用`);
+      }
     }
     return this.browser;
   }
