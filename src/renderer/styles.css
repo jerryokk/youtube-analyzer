@@ -466,3 +466,149 @@ body {
 .table-wrapper::-webkit-scrollbar-thumb:hover {
     background: #a1a1a1;
 }
+
+/* 浏览器选择对话框样式 */
+.browser-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+}
+
+.browser-modal-content {
+    background: white;
+    border-radius: 8px;
+    padding: 24px;
+    max-width: 500px;
+    width: 90%;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.browser-modal-content h3 {
+    font-size: 18px;
+    margin-bottom: 12px;
+    color: #333;
+}
+
+.browser-modal-content p {
+    color: #666;
+    margin-bottom: 20px;
+    line-height: 1.5;
+}
+
+.browser-options {
+    margin-bottom: 20px;
+}
+
+.browser-option {
+    display: flex;
+    align-items: center;
+    padding: 12px;
+    border: 2px solid #e0e0e0;
+    border-radius: 6px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.browser-option:hover {
+    border-color: #ccc;
+    background: #f9f9f9;
+}
+
+.browser-option.selected {
+    border-color: #4a90e2;
+    background: #f0f7ff;
+}
+
+.browser-option.available {
+    /* 移除绿色边框，只在内容中显示可用状态 */
+}
+
+.browser-option.available.selected {
+    border-color: #4a90e2;
+    background: #f0f7ff;
+}
+
+.browser-icon {
+    font-size: 24px;
+    margin-right: 12px;
+    width: 32px;
+    text-align: center;
+}
+
+.browser-info {
+    flex: 1;
+}
+
+.browser-name {
+    font-weight: 600;
+    font-size: 14px;
+    color: #333;
+    margin-bottom: 4px;
+}
+
+.browser-status {
+    font-size: 12px;
+    color: #666;
+}
+
+.custom-path-section {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+    padding: 12px;
+    background: #f5f5f5;
+    border-radius: 6px;
+}
+
+.custom-path-section input {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 12px;
+}
+
+.custom-path-section button {
+    padding: 8px 16px;
+    background: #4a90e2;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.custom-path-section button:hover {
+    background: #357abd;
+}
+
+.browser-modal-buttons {
+    text-align: right;
+}
+
+.browser-modal-buttons button {
+    padding: 10px 24px;
+    background: #4a90e2;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.browser-modal-buttons button:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+}
+
+.browser-modal-buttons button:not(:disabled):hover {
+    background: #357abd;
+}

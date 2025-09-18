@@ -1,19 +1,129 @@
 const { ipcRenderer } = require('electron');
 
-// 常量定义
-const NOTIFICATION_DURATION = 1000; // 1秒 - 复制提示时间
-const NOTIFICATION_DISPLAY_DURATION = 1500; // 1.5秒 - 系统通知显示时间
+// 从常量文件导入配置（在Electron渲染进程中需要使用require）
+const { UI_TEXT, NOTIFICATION_DURATION, NOTIFICATION_DISPLAY_DURATION, TABLE_HEADERS } = require('../utils/constants');
 
-// UI 文本常量
-const UI_TEXT = {
-    ANALYZING: '解析中...',
-    ANALYZE: '解析',
-    READY: '就绪',
-    PARSING: '正在解析',
-    STOPPED: '正在停止解析...',
-    PARSE_COMPLETE: '解析完成',
-    APPEND_COMPLETE: '追加解析完成'
-};
+// 浏览器选择对话框
+class BrowserSelector {
+    constructor() {
+        this.selectedBrowser = null;
+        this.customPath = null;
+    }
+
+    async show() {
+        return new Promise((resolve) => {
+            const modal = document.createElement('div');
+            modal.className = 'browser-modal';
+            modal.innerHTML = `
+                <div class="browser-modal-content">
+                    <h3>选择浏览器</h3>
+                    <p>首次使用需要选择浏览器引擎，请选择一个可用的选项：</p>
+
+                    <div class="browser-options">
+                        <div class="browser-option" data-browser="edge">
+                            <div class="browser-icon">🔵</div>
+                            <div class="browser-info">
+                                <div class="browser-name">Microsoft Edge (推荐)</div>
+                                <div class="browser-status" id="edge-status">检测中...</div>
+                            </div>
+                        </div>
+
+                        <div class="browser-option" data-browser="chrome">
+                            <div class="browser-icon">🟢</div>
+                            <div class="browser-info">
+                                <div class="browser-name">Google Chrome</div>
+                                <div class="browser-status" id="chrome-status">检测中...</div>
+                            </div>
+                        </div>
+
+                        <div class="browser-option" data-browser="custom">
+                            <div class="browser-icon">📁</div>
+                            <div class="browser-info">
+                                <div class="browser-name">自定义浏览器路径</div>
+                                <div class="browser-status">手动选择浏览器可执行文件（如 chrome.exe, msedge.exe）</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="custom-path-section" id="custom-path-section" style="display: none;">
+                        <input type="text" id="custom-path-input" placeholder="请选择浏览器可执行文件..." readonly>
+                        <button id="browse-button">浏览</button>
+                    </div>
+
+                    <div class="browser-modal-buttons">
+                        <button id="confirm-browser" disabled>确认</button>
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(modal);
+
+            this.checkBrowsers();
+            this.bindEvents(modal, resolve);
+        });
+    }
+
+    async checkBrowsers() {
+        // 检测 Edge
+        const edgeStatus = document.querySelector('#edge-status');
+        const edgeAvailable = await ipcRenderer.invoke('check-browser-path', 'edge');
+        edgeStatus.textContent = edgeAvailable ? '✅ 可用' : '❌ 未找到';
+        edgeStatus.parentElement.parentElement.classList.toggle('available', edgeAvailable);
+
+        // 检测 Chrome
+        const chromeStatus = document.querySelector('#chrome-status');
+        const chromeAvailable = await ipcRenderer.invoke('check-browser-path', 'chrome');
+        chromeStatus.textContent = chromeAvailable ? '✅ 可用' : '❌ 未找到';
+        chromeStatus.parentElement.parentElement.classList.toggle('available', chromeAvailable);
+    }
+
+    bindEvents(modal, resolve) {
+        const options = modal.querySelectorAll('.browser-option');
+        const customSection = modal.querySelector('#custom-path-section');
+        const customInput = modal.querySelector('#custom-path-input');
+        const browseButton = modal.querySelector('#browse-button');
+        const confirmButton = modal.querySelector('#confirm-browser');
+
+        options.forEach(option => {
+            option.addEventListener('click', () => {
+                // 移除其他选中状态
+                options.forEach(opt => opt.classList.remove('selected'));
+                option.classList.add('selected');
+
+                const browser = option.dataset.browser;
+                this.selectedBrowser = browser;
+
+                if (browser === 'custom') {
+                    customSection.style.display = 'block';
+                    confirmButton.disabled = !customInput.value;
+                } else {
+                    customSection.style.display = 'none';
+                    // 选择Edge或Chrome时，直接启用确认按钮（即使浏览器不可用也允许用户尝试）
+                    confirmButton.disabled = false;
+                }
+            });
+        });
+
+        browseButton.addEventListener('click', async () => {
+            const path = await ipcRenderer.invoke('select-browser-file');
+            if (path) {
+                customInput.value = path;
+                this.customPath = path;
+                confirmButton.disabled = false;
+            }
+        });
+
+        confirmButton.addEventListener('click', () => {
+            const result = {
+                browser: this.selectedBrowser,
+                customPath: this.customPath
+            };
+
+            document.body.removeChild(modal);
+            resolve(result);
+        });
+    }
+}
 
 class ExcelTable {
     constructor(container) {
@@ -271,14 +381,37 @@ class ExcelTable {
 
 class YouTubeAnalyzerUI {
     constructor() {
-        this.initElements();
-        this.initTable();
-        this.bindEvents();
         this.results = [];
         this.isAnalyzing = false;
         this.shouldStop = false;
         this.currentBatchStartIndex = 0; // 当前批次开始的索引
         this.currentBatchTotal = 0; // 当前批次的总数量
+    }
+
+    async init() {
+        this.initElements();
+        this.initTable();
+        this.bindEvents();
+
+        // 检查浏览器配置，如果没有则显示选择对话框
+        await this.checkBrowserConfig();
+    }
+
+    async checkBrowserConfig() {
+        const config = await ipcRenderer.invoke('get-config');
+        if (!config.browser) {
+            const browserSelector = new BrowserSelector();
+            const browserConfig = await browserSelector.show();
+
+            if (!browserConfig) {
+                // 用户取消了选择，退出应用
+                await ipcRenderer.invoke('quit-app');
+                return;
+            }
+
+            // 保存浏览器配置
+            await ipcRenderer.invoke('set-browser-config', browserConfig);
+        }
     }
 
     initElements() {
@@ -289,6 +422,7 @@ class YouTubeAnalyzerUI {
         this.stopBtn = document.getElementById('stop-btn');
         this.clearBtn = document.getElementById('clear-btn');
         this.exportBtn = document.getElementById('export-btn');
+        this.browserSettingsBtn = document.getElementById('browser-settings-btn');
         this.statusBar = document.getElementById('status-bar');
         this.progressPanel = document.getElementById('progress-panel');
         this.progressText = document.getElementById('progress-text');
@@ -302,8 +436,7 @@ class YouTubeAnalyzerUI {
         this.excelTable = new ExcelTable(tableContainer);
 
         // 设置表头
-        const headers = ['链接', '标题', '频道', '订阅量', '播放量', '点赞', '评论', '发布日期', '状态'];
-        this.excelTable.setHeaders(headers);
+        this.excelTable.setHeaders(TABLE_HEADERS);
     }
 
     bindEvents() {
@@ -311,6 +444,7 @@ class YouTubeAnalyzerUI {
         this.stopBtn.addEventListener('click', () => this.stopAnalysis());
         this.clearBtn.addEventListener('click', () => this.clearInput());
         this.exportBtn.addEventListener('click', () => this.exportResults());
+        this.browserSettingsBtn.addEventListener('click', () => this.showBrowserSettings());
 
         // 下拉按钮事件
         this.analyzeDropdown.addEventListener('click', (e) => {
@@ -398,6 +532,7 @@ class YouTubeAnalyzerUI {
             return;
         }
 
+
         this.isAnalyzing = true;
         this.shouldStop = false;
         this.setAnalyzing(true);
@@ -431,6 +566,19 @@ class YouTubeAnalyzerUI {
         } catch (error) {
             if (!this.shouldStop) {
                 console.error('Analysis error:', error);
+
+                // 如果是浏览器相关错误，提供重新选择浏览器的选项
+                if (error.message.includes('浏览器') || error.message.includes('browser') || error.message.includes('launch') || error.message.includes('未找到可用的浏览器')) {
+                    const retry = confirm(`浏览器启动失败: ${error.message}\n\n是否重新选择浏览器？`);
+                    if (retry) {
+                        // 清除当前浏览器配置，下次启动时会重新选择
+                        await ipcRenderer.invoke('clear-browser-config');
+                        // 重新加载应用
+                        location.reload();
+                        return;
+                    }
+                }
+
                 this.showNotification(`解析失败: ${error.message}`, 'error');
             }
         } finally {
@@ -589,11 +737,36 @@ class YouTubeAnalyzerUI {
             }, 300);
         }, NOTIFICATION_DISPLAY_DURATION);
     }
+
+    async showBrowserSettings() {
+        const config = await ipcRenderer.invoke('get-config');
+        let currentBrowser = '未配置';
+
+        if (config.browser) {
+            if (config.browser.browser === 'custom') {
+                currentBrowser = `自定义: ${config.browser.customPath}`;
+            } else {
+                currentBrowser = config.browser.browser === 'edge' ? 'Microsoft Edge' : 'Google Chrome';
+            }
+        }
+
+        const change = confirm(`当前浏览器配置: ${currentBrowser}\n\n是否重新选择浏览器？`);
+        if (change) {
+            const browserSelector = new BrowserSelector();
+            const browserConfig = await browserSelector.show();
+
+            if (browserConfig) {
+                await ipcRenderer.invoke('set-browser-config', browserConfig);
+                this.showNotification('浏览器配置已更新', 'success');
+            }
+        }
+    }
 }
 
 // 初始化应用
-document.addEventListener('DOMContentLoaded', () => {
-    new YouTubeAnalyzerUI();
+document.addEventListener('DOMContentLoaded', async () => {
+    const ui = new YouTubeAnalyzerUI();
+    await ui.init();
 });
 
 // 处理未捕获的错误

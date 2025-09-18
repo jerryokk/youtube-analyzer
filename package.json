@@ -1,6 +1,6 @@
 {
   "name": "youtube-analyzer",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "YouTube video information extractor",
   "author": "YouTube Data Extractor Team",
   "main": "src/main/main.js",

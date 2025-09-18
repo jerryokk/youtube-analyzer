@@ -2,6 +2,8 @@ const { app, BrowserWindow, ipcMain, dialog, Notification, shell } = require('el
 const path = require('path');
 const fs = require('fs');
 const YouTubeAnalyzer = require('../utils/youtube-analyzer');
+const { CSV_HEADERS } = require('../utils/constants');
+
 
 let mainWindow;
 const analyzer = new YouTubeAnalyzer();
@@ -53,6 +55,10 @@ app.on('activate', () => {
 // IPC 处理程序
 ipcMain.handle('analyze-videos', async (event, urls) => {
   try {
+    // 获取浏览器配置
+    const config = loadConfig();
+    const browserConfig = config.browser;
+
     currentAnalysis = analyzer.analyzeVideos(
       urls,
       null, // 移除单独的进度回调
@@ -67,7 +73,8 @@ ipcMain.handle('analyze-videos', async (event, urls) => {
             body: `成功解析 ${successCount}/${total} 个视频`
           }).show();
         }
-      }
+      },
+      browserConfig
     );
 
     const results = await currentAnalysis;
@@ -129,8 +136,7 @@ ipcMain.handle('export-csv', async (event, data) => {
 });
 
 function convertToCSV(data) {
-  const headers = ['视频链接', '视频标题', '频道名称', '频道订阅量', '播放量', '点赞数', '评论数', '发布日期'];
-  const rows = [headers.join(',')];
+  const rows = [CSV_HEADERS.join(',')];
 
   data.forEach(item => {
     const row = [
@@ -148,3 +154,87 @@ function convertToCSV(data) {
 
   return rows.join('\n');
 }
+
+// 检查浏览器路径是否存在
+async function checkBrowserPath(browserType) {
+  return await analyzer.getBrowserPath(browserType);
+}
+
+// 浏览器相关IPC处理
+ipcMain.handle('check-browser-path', async (event, browserType) => {
+  const path = await checkBrowserPath(browserType);
+  return !!path;
+});
+
+ipcMain.handle('get-browser-path', async (event, browserType) => {
+  return await checkBrowserPath(browserType);
+});
+
+ipcMain.handle('select-browser-file', async (event) => {
+  try {
+    const { filePaths } = await dialog.showOpenDialog(mainWindow, {
+      title: '选择浏览器可执行文件',
+      filters: [
+        { name: '可执行文件', extensions: ['exe'] },
+        { name: '所有文件', extensions: ['*'] }
+      ],
+      properties: ['openFile']
+    });
+
+    if (filePaths && filePaths.length > 0) {
+      return filePaths[0];
+    }
+    return null;
+  } catch (error) {
+    console.error('Select browser file error:', error);
+    return null;
+  }
+});
+
+// 保存和获取用户配置
+const configPath = path.join(app.getPath('userData'), 'config.json');
+
+function loadConfig() {
+  try {
+    if (fs.existsSync(configPath)) {
+      return JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    }
+  } catch (error) {
+    console.error('Load config error:', error);
+  }
+  return {};
+}
+
+function saveConfig(config) {
+  try {
+    fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf8');
+    return true;
+  } catch (error) {
+    console.error('Save config error:', error);
+    return false;
+  }
+}
+
+ipcMain.handle('get-config', async () => {
+  return loadConfig();
+});
+
+ipcMain.handle('save-config', async (event, config) => {
+  return saveConfig(config);
+});
+
+ipcMain.handle('set-browser-config', async (event, browserConfig) => {
+  const config = loadConfig();
+  config.browser = browserConfig;
+  return saveConfig(config);
+});
+
+ipcMain.handle('quit-app', async () => {
+  app.quit();
+});
+
+ipcMain.handle('clear-browser-config', async () => {
+  const config = loadConfig();
+  delete config.browser;
+  return saveConfig(config);
+});

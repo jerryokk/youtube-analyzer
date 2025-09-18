@@ -1,4 +1,6 @@
 const puppeteer = require('puppeteer-core');
+const fs = require('fs');
+const { BROWSER_PATHS, BROWSER_ARGS, TIMEOUTS } = require('./constants');
 
 class YouTubeAnalyzer {
   constructor() {
@@ -6,111 +8,120 @@ class YouTubeAnalyzer {
     this.shouldStop = false;
   }
 
-  async initBrowser() {
-    if (!this.browser) {
-      const fs = require('fs');
+  async getBrowserPath(browserType) {
 
-      // 更全面的 Edge 浏览器路径检测
-      const possiblePaths = [
-        // 标准安装路径
-        'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
-        'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
-        // 用户级安装路径
-        process.env.LOCALAPPDATA + '\\Microsoft\\Edge\\Application\\msedge.exe',
-        // Windows 11 可能的路径
-        'C:\\Program Files\\Microsoft\\Edge Beta\\Application\\msedge.exe',
-        'C:\\Program Files (x86)\\Microsoft\\Edge Beta\\Application\\msedge.exe'
-      ];
+    const paths = BROWSER_PATHS[browserType];
+    if (!paths) return null;
+
+    // 检查标准路径
+    for (const path of paths) {
+      try {
+        if (path && fs.existsSync(path)) {
+          return path;
+        }
+      } catch (e) {
+        continue;
+      }
+    }
+
+    // 尝试通过注册表查找 (仅限 Windows)
+    if (browserType === 'edge' && process.platform === 'win32') {
+      try {
+        const { execSync } = require('child_process');
+        const regQuery = 'reg query "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\msedge.exe" /ve';
+        const result = execSync(regQuery, { encoding: 'utf8', timeout: 5000 });
+        const match = result.match(/REG_SZ\s+(.+\.exe)/);
+        if (match && fs.existsSync(match[1])) {
+          return match[1];
+        }
+      } catch (e) {
+        // 注册表查询失败，忽略（可能不是Windows系统或权限不足）
+        console.debug('Registry query failed:', e.message);
+      }
+    }
+
+    return null;
+  }
+
+  getBrowserName(executablePath) {
+    const path = executablePath.toLowerCase();
+    if (path.includes('msedge.exe')) {
+      return 'Microsoft Edge';
+    } else if (path.includes('chrome.exe')) {
+      return 'Google Chrome';
+    } else if (path.includes('firefox.exe')) {
+      return 'Mozilla Firefox';
+    } else if (path.includes('opera.exe')) {
+      return 'Opera';
+    } else if (path.includes('brave.exe')) {
+      return 'Brave';
+    } else {
+      // 从路径中提取文件名作为浏览器名称
+      const fileName = executablePath.split('\\').pop().split('/').pop();
+      return fileName.replace('.exe', '');
+    }
+  }
+
+  async initBrowser(browserConfig = null) {
+    if (!this.browser) {
 
       let executablePath = null;
-      for (const path of possiblePaths) {
-        try {
-          if (path && fs.existsSync(path)) {
-            executablePath = path;
-            console.log('Found Edge at:', path);
-            break;
-          }
-        } catch (e) {
-          continue;
+
+      // 如果提供了浏览器配置，使用配置的路径
+      if (browserConfig) {
+        if (browserConfig.browser === 'custom' && browserConfig.customPath) {
+          executablePath = browserConfig.customPath;
+          console.log('Using custom browser path:', executablePath);
+        } else if (browserConfig.browser === 'edge' || browserConfig.browser === 'chrome') {
+          executablePath = await this.getBrowserPath(browserConfig.browser);
+          const browserName = browserConfig.browser === 'edge' ? 'Microsoft Edge' : 'Google Chrome';
+          console.log(`Using ${browserName} at:`, executablePath);
         }
-      }
-
-      if (!executablePath) {
-        // 尝试通过注册表查找 Edge
-        try {
-          const { execSync } = require('child_process');
-          const regQuery = 'reg query "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\msedge.exe" /ve';
-          const result = execSync(regQuery, { encoding: 'utf8' });
-          const match = result.match(/REG_SZ\s+(.+\.exe)/);
-          if (match && fs.existsSync(match[1])) {
-            executablePath = match[1];
-            console.log('Found Edge via registry:', executablePath);
-          }
-        } catch (e) {
-          // 注册表查询失败，忽略
-        }
-      }
-
-      if (!executablePath) {
-        // 如果找不到 Edge，尝试查找 Chrome 作为备用
-        const chromePaths = [
-          'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-          'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
-          process.env.LOCALAPPDATA + '\\Google\\Chrome\\Application\\chrome.exe'
-        ];
-
-        for (const path of chromePaths) {
-          try {
-            if (path && fs.existsSync(path)) {
-              executablePath = path;
-              console.log('Using Chrome as fallback:', path);
-              break;
-            }
-          } catch (e) {
-            continue;
+      } else {
+        // 默认行为：先尝试 Edge，再尝试 Chrome
+        executablePath = await this.getBrowserPath('edge');
+        if (executablePath) {
+          console.log('Using Microsoft Edge (default) at:', executablePath);
+        } else {
+          executablePath = await this.getBrowserPath('chrome');
+          if (executablePath) {
+            console.log('Using Google Chrome (fallback) at:', executablePath);
           }
         }
       }
 
       if (!executablePath) {
-        throw new Error('未找到可用的浏览器。请安装 Microsoft Edge 或 Google Chrome 浏览器。');
+        throw new Error('未找到可用的浏览器。请在设置中选择浏览器路径。');
       }
+
+      // 验证路径是否存在
+      if (!fs.existsSync(executablePath)) {
+        throw new Error(`浏览器路径不存在: ${executablePath}`);
+      }
+
+      // 确定浏览器类型用于日志显示
+      const browserName = this.getBrowserName(executablePath);
 
       const launchOptions = {
         executablePath,
         headless: true,
-        args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage',
-          '--disable-extensions',
-          '--disable-background-timer-throttling',
-          '--disable-renderer-backgrounding',
-          '--disable-backgrounding-occluded-windows',
-          '--disable-features=TranslateUI',
-          '--disable-ipc-flooding-protection',
-          '--no-first-run',
-          '--no-default-browser-check',
-          '--disable-gpu',
-          '--disable-web-security',
-          '--lang=en-US'
-        ],
-        timeout: 30000
+        args: BROWSER_ARGS,
+        timeout: TIMEOUTS.BROWSER_LAUNCH
       };
 
       try {
         this.browser = await puppeteer.launch(launchOptions);
-        console.log('Edge browser launched successfully');
+        console.log(`${browserName} browser launched successfully`);
       } catch (error) {
-        console.error('Failed to launch Edge:', error.message);
-        throw new Error(`无法启动 Microsoft Edge 浏览器: ${error.message}\n\n请尝试：\n1. 重新启动应用\n2. 更新 Microsoft Edge 到最新版本\n3. 以管理员身份运行应用`);
+        console.error(`Failed to launch ${browserName}:`, error.message);
+        throw new Error(`无法启动 ${browserName} 浏览器: ${error.message}\n\n请尝试：\n1. 重新启动应用\n2. 更新浏览器到最新版本\n3. 以管理员身份运行应用\n4. 检查浏览器路径是否正确: ${executablePath}`);
       }
     }
     return this.browser;
   }
 
-  async analyzeVideos(urls, progressCallback, resultCallback) {
-    const browser = await this.initBrowser();
+  async analyzeVideos(urls, progressCallback, resultCallback, browserConfig = null) {
+    const browser = await this.initBrowser(browserConfig);
     const results = [];
     const total = urls.length;
     this.shouldStop = false;
@@ -171,11 +182,11 @@ class YouTubeAnalyzer {
       // 访问视频页面
       await page.goto(url, {
         waitUntil: 'networkidle2',
-        timeout: 30000
+        timeout: TIMEOUTS.PAGE_LOAD
       });
 
       // 等待页面加载完成
-      await page.waitForTimeout(3000);
+      await page.waitForTimeout(TIMEOUTS.PAGE_WAIT);
 
       // 提取ytInitialData JSON数据
       const videoData = await page.evaluate(() => {
